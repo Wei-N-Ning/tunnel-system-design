@@ -4,27 +4,13 @@ import copy
 
 class NoPathException(Exception):
     def __init__(self, fr, to_):
-        super().__init__(f'there is no path from {fr} to {to_}')
+        Exception.__init__(self, 'there is no path from {fr} to {to_}'.format(fr=fr, to_=to_))
 
 
 class MaxFlowCalculator:
-    """Given a schema-compliant graph object, a "source" and 
-    a "sink", it calculates the maximum flow using the Edmonds-Karp
-    algorithm. 
+    """Given a list of edges, a "source" and a "sink", it calculates the maximum 
+    flow using the Edmonds-Karp algorithm. 
     """
-
-    graph_schema = collections.defaultdict(
-        list,
-        {
-            # graph is expected to be a defaultdict with the
-            # value-factory function being `list` (the builtin list ctor).
-
-            # each k-v pair is:
-            # <from_node: list of (to_node, edge_flow)>
-
-            # example:
-            'S': [('A', 4), ('B', 8)],
-        })
 
     @staticmethod
     def _create_residual_graph(graph):
@@ -43,7 +29,7 @@ class MaxFlowCalculator:
         If it is impossible to find a path from src to sink, return None to signal termination 
         or exception.
         """
-        def iterate_dfs(node):
+        def iterate_bfs(node):
             Q = collections.deque([([], src)])  # a list of (path, node)
             visited = set()
             while Q:
@@ -59,7 +45,7 @@ class MaxFlowCalculator:
                     new_path = path + [(node, to_node, edge_flow)]
                     Q.append((new_path, to_node))
 
-        for path in iterate_dfs(src):
+        for path in iterate_bfs(src):
             fr, to_, edge_flow = path[-1]
             if to_ == sink:
                 return path
@@ -78,14 +64,24 @@ class MaxFlowCalculator:
             edges.append((to_node, edge_flow))
         residual_graph[fr] = edges
 
-    def __call__(self, graph, src, sink):
+    @staticmethod
+    def create_graph(edges):
+        graph = collections.defaultdict(list, dict())
+        for fr, to_, flow in edges:
+            graph[fr].append([to_, flow])
+        return graph
+
+    def __call__(self, edges, src, sink):
         """Return the maximum flow from src to sink.
 
         Raise NoPathException if it is impossible to travel from src to sink.
         """
+        graph = self.create_graph(edges)
+
         # is there a path from src sink at all
         if not self._extract_path(graph, src, sink):
             raise NoPathException(src, sink)
+            
         residual_graph = self._create_residual_graph(graph)
         result = 0
         while True:
